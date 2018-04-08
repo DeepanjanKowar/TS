@@ -21,6 +21,8 @@ library(RColorBrewer)
 library(RMySQL)
 library(textclean)
 library(textreg)
+library(tidyr)
+library(rlist)
 consumerKey = "3I8JehozX8N4Bojg0qSdmDFLX"   
 consumerSecret = "QBg2E2TcqtvlK0vrRIwIWZGSXjlPoYaLXwjrePRDLztepAU6cg"
 accessToken = "2433072234-seryr8c6OCyNU5veonMKf5hvX8JKCUOiA20TcoC"
@@ -511,22 +513,30 @@ m<-1
 for(i in list2) {
   # if(i[[4]] == max(list2[[4]])) {
     x = x+1
-    print(i[[1]])
-    print(i[[2]])
-    print(i[[3]])
+    # print(i[[1]])
+    # print(i[[2]])
+    # print(i[[3]])
+    # i[[1]]="india" 
+    # i[[2]]="has approved "
+    # i[[3]]="the jallikattu ordinance"
     
-    trim(i[[1]])
-    trim(i[[3]])
-    trim(i[[2]])
+    i[[1]]<-trim(i[[1]])
+    i[[2]]<-trim(i[[2]])
+    i[[3]]<-trim(i[[3]])
     
     y<-dbSendQuery(con,paste("SELECT data from tweets where data like '%",i[[1]],"%' and data like '%",i[[2]],"%' and data like '%",i[[3]],"%'",sep=""))
     c1.df <- dbFetch(y, n = -1)
     dbClearResult(dbListResults(con)[[1]])
-    tweets<- as.list(c1.df[,1])
-     # print(tweets)
+    tweets<- c1.df[,1]
+    tweets <- paste(tweets, collapse = "  Next Tweet :  ")
+    # tweets<-Reduce(merge,tweets)
+    # tweets<-unite(tweets,"merge",sep=" ")
+    # tweets<-list.cbind(tweets)
+    print(tweets)
     
     list3[[x]] <- c(i[[1]],i[[2]],i[[3]],tweets,i[[4]])
-    count=count+1
+    
+    # count=count+1
     # list2[[m]]<-NULL
   # }
   m=m+1
@@ -535,7 +545,7 @@ list3
 actor.df <- data.frame(Noun=character(), score=integer(), stringsAsFactors=FALSE)
 
 for(i in list3) {
-  trim(i[[1]])
+  i[[1]]<-trim(i[[1]])
   if(nrow(subset(actor.df,Noun==i[[1]])) == 0) {
     marks<-0
     x<-0
@@ -552,6 +562,7 @@ for(i in list3) {
     marks = marks + x
     actor.df[nrow(actor.df) + 1,] = c(i[[1]],marks)
   }
+  i[[3]]<-trim(i[[3]])
   if(nrow(subset(actor.df,Noun==i[[3]])) == 0) {
     marks<-0
     x<-0
@@ -574,11 +585,17 @@ topactors <- actor.df[rev(order(as.numeric(actor.df$score))),]
 View(actor.df)
 
 clusters <- list3
-clusters.df <- lapply(clusters, function(v) { c(v, rep(NA, max.length-length(v)))})
+
+clusters.df <- data.frame(matrix(unlist(clusters),nrow = length(clusters) ,byrow=T),stringsAsFactors = F)
+colnames(clusters.df)<-c("Noun1","Verb1","Noun2","Tweets","Score")
+clusters.df <- clusters.df[rev(order(as.numeric(clusters.df$Score))),]
+# colnames(clusters.df)<-c("Noun1","Verb1","Noun2","Tweets","Score")
+# colnames(clusters.df)<-c("noun1","verb","noun2","tweets","score")
+# clusters.df <- lapply(clusters, function(v) { c(v, rep(NA, max.length(v)))})
 View(clusters.df)
-class(clusters.df)
-clusters.df <- do.call(rbind, clusters.df)
-clusters.df <- data.frame(clusters.df)
-View(clusters.df)
-clusters.df <- apply(clusters.df,2,as.character)
+# class(clusters.df)
+# clusters.df <- do.call(rbind, clusters.df)
+# clusters.df <- data.frame(clusters.df)
+# View(clusters.df)
+# clusters.df <- apply(clusters.df,2,as.character)
 write.csv(clusters.df, "Clusters.csv")
